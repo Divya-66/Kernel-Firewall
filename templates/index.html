@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>eBPF Firewall Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="d-flex">
+        <!-- Sidebar -->
+        <div class="sidebar p-3">
+            <h4 class="text-center">Controls</h4>
+            <button id="theme-toggle" class="btn btn-gradient mb-2 w-100">Toggle Dark Mode</button>
+            <button id="scroll-toggle" class="btn btn-gradient mb-2 w-100">Pause Scroll</button>
+            <button id="export-packets" class="btn btn-gradient mb-2 w-100">Export Packets</button>
+            <div class="input-group mb-2">
+                <input type="text" id="filter-ip" class="form-control" placeholder="Filter IP">
+                <button id="clear-filter" class="btn btn-outline-secondary">Clear</button>
+            </div>
+            <select id="protocol-filter" class="form-select mb-2">
+                <option value="">All Protocols</option>
+                <option value="ICMP">ICMP</option>
+                <option value="TCP">TCP</option>
+                <option value="UDP">UDP</option>
+            </select>
+            <div class="status-badge text-center mt-3">
+                <span id="status-text">Active</span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="container-fluid main-content p-4">
+            <h1 class="text-center mb-4">eBPF Firewall Dashboard</h1>
+
+            <!-- Stats -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card slide-in">
+                        <div class="card-body">
+                            <h5>Total Packets</h5>
+                            <p id="total-packets">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card slide-in">
+                        <div class="card-body">
+                            <h5>Blocked Packets</h5>
+                            <p id="blocked-packets">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card slide-in">
+                        <div class="card-body">
+                            <h5>Top IPs</h5>
+                            <ul id="top-ips" class="list-unstyled"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Packet Rate Graph -->
+            <div class="card mb-4 slide-in">
+                <div class="card-body">
+                    <h5>Packet Rate (packets/sec)</h5>
+                    <canvas id="packet-rate-chart" height="100"></canvas>
+                </div>
+            </div>
+
+            <!-- Packet Tables -->
+            <div class="row">
+                <div class="col-md-6">
+                    <h3>Recent Packets</h3>
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="packet-table">
+                            <thead class="sticky-header">
+                                <tr>
+                                    <th>Source IP</th>
+                                    <th>Protocol</th>
+                                    <th>Country</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h3>Blocked Packets</h3>
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="blocked-packet-table">
+                            <thead class="sticky-header">
+                                <tr>
+                                    <th>Source IP</th>
+                                    <th>Protocol</th>
+                                    <th>Country</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rules Table -->
+            <h3>Firewall Rules</h3>
+            <div class="table-responsive">
+                <table class="table table-striped" id="rules-table">
+                    <thead class="sticky-header">
+                        <tr>
+                            <th>IP</th>
+                            <th>Action</th>
+                            <th>Manage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rule in rules %}
+                        <tr>
+                            <td>{{ rule.ip }}</td>
+                            <td>{{ rule.action }}</td>
+                            <td><button class="btn btn-danger btn-sm remove-rule" data-ip="{{ rule.ip }}">Remove</button></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <form class="mt-3" id="add-rule-form">
+                <div class="input-group">
+                    <input type="text" class="form-control" placeholder="IP (e.g., 8.8.8.8)" id="new-ip" pattern="^(\d{1,3}\.){3}\d{1,3}$" title="Enter a valid IPv4 address" required>
+                    <select class="form-select" id="new-action">
+                        <option value="block">Block</option>
+                        <option value="allow">Allow</option>
+                    </select>
+                    <button class="btn btn-gradient" type="submit">Add Rule</button>
+                </div>
+            </form>
+            <div id="error-message" class="text-danger mt-2"></div>
+            <div id="success-message" class="text-success mt-2"></div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 11"></div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="packet-details-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Packet Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Source IP:</strong> <span id="detail-ip"></span></p>
+                    <p><strong>Protocol:</strong> <span id="detail-protocol"></span></p>
+                    <p><strong>Country:</strong> <span id="detail-country"></span></p>
+                    <p><strong>Timestamp:</strong> <span id="detail-timestamp"></span></p>
+                    <p><strong>Blocked:</strong> <span id="detail-blocked"></span></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script>
+        const socket = io();
+        let packetCount = 0;
+        let autoScroll = true;
+        let filterIp = '';
+        let filterProtocol = '';
+
+        // Chart
+        const ctx = document.getElementById('packet-rate-chart').getContext('2d');
+        const packetRateChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array(60).fill().map((_, i) => -(60 - i)),
+                datasets: [{
+                    label: 'Packets/sec',
+                    data: Array(60).fill(0),
+                    borderColor: '#007bff',
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: { x: { display: false }, y: { beginAtZero: true } }
+            }
+        });
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.classList.add('toast', `bg-${type}`, 'text-white', 'mb-2');
+            toast.setAttribute('role', 'alert');
+            toast.innerHTML = `
+                <div class="toast-body">
+                    ${message}
+                    <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            document.getElementById('toast-container').appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            setTimeout(() => toast.remove(), 5000);
+        }
+
+        socket.on('connect', () => {
+            console.log('SocketIO connected');
+            showToast('Connected to dashboard', 'success');
+        });
+
+        socket.on('new_packet', function(packet) {
+            console.log('Received packet:', packet);
+            if (!autoScroll) return;
+            if (filterIp && packet.src_ip !== filterIp) return;
+            if (filterProtocol && packet.protocol !== filterProtocol) return;
+            packetCount++;
+            const tbody = document.querySelector('#packet-table tbody');
+            const row = document.createElement('tr');
+            row.classList.add('packet-row');
+            row.innerHTML = `<td>${packet.src_ip}</td><td>${packet.protocol}</td><td>${packet.country || 'Unknown'}</td>`;
+            row.dataset.packet = JSON.stringify(packet);
+            if (packet.blocked) {
+                row.classList.add('table-danger', 'flash');
+            }
+            tbody.insertBefore(row, tbody.firstChild);
+            if (tbody.children.length > 10 && autoScroll) {
+                tbody.removeChild(tbody.lastChild);
+            }
+        });
+
+        socket.on('blocked_packets', function(packets) {
+            console.log('Received blocked packets:', packets);
+            const tbody = document.querySelector('#blocked-packet-table tbody');
+            tbody.innerHTML = '';
+            packets.forEach(packet => {
+                if (filterProtocol && packet.protocol !== filterProtocol) return;
+                const row = document.createElement('tr');
+                row.classList.add('packet-row');
+                row.innerHTML = `<td>${packet.src_ip}</td><td>${packet.protocol}</td><td>${packet.country || 'Unknown'}</td>`;
+                row.classList.add('table-danger');
+                row.dataset.packet = JSON.stringify(packet);
+                tbody.appendChild(row);
+            });
+        });
+
+        socket.on('blocked_alert', function(data) {
+            showToast(`Blocked packet from ${data.ip}`, 'danger');
+        });
+
+        socket.on('rule_alert', function(data) {
+            showToast(`${data.cmd === 'add' ? 'Added' : 'Removed'} rule: ${data.ip} -> ${data.action}`, 'info');
+        });
+
+        socket.on('rate_alert', function(data) {
+            showToast(`High packet rate from ${data.ip}: ${data.rate}/sec`, 'warning');
+        });
+
+        socket.on('stats_update', function(stats) {
+            document.getElementById('total-packets').textContent = stats.total_packets;
+            document.getElementById('blocked-packets').textContent = stats.blocked_packets;
+            const topIpsList = document.getElementById('top-ips');
+            topIpsList.innerHTML = '';
+            stats.top_ips.forEach(([ip, count]) => {
+                const li = document.createElement('li');
+                li.textContent = `${ip}: ${count}`;
+                topIpsList.appendChild(li);
+            });
+            packetRateChart.data.datasets[0].data = stats.packet_rate;
+            packetRateChart.data.datasets[0].borderColor = stats.blocked_packets > 0 ? '#dc3545' : '#007bff';
+            packetRateChart.data.datasets[0].backgroundColor = stats.blocked_packets > 0 ? 'rgba(220, 53, 69, 0.1)' : 'rgba(0, 123, 255, 0.1)';
+            packetRateChart.update();
+            document.getElementById('status-text').textContent = stats.blocked_packets > 0 ? 'Blocking Active' : 'Active';
+        });
+
+        function updateRulesTable() {
+            fetch('/get_rules')
+                .then(response => response.json())
+                .then(rules => {
+                    const tbody = document.querySelector('#rules-table tbody');
+                    tbody.innerHTML = '';
+                    rules.forEach(rule => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${rule.ip}</td><td>${rule.action}</td><td><button class="btn btn-danger btn-sm remove-rule" data-ip="${rule.ip}">Remove</button></td>`;
+                        tbody.appendChild(row);
+                    });
+                });
+        }
+
+        document.getElementById('add-rule-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const ip = document.getElementById('new-ip').value;
+            const action = document.getElementById('new-action').value;
+            const errorDiv = document.getElementById('error-message');
+            const successDiv = document.getElementById('success-message');
+            errorDiv.textContent = '';
+            successDiv.textContent = '';
+            if (!ip.match(/^(\d{1,3}\.){3}\d{1,3}$/) || ip.split('.').some(n => n > 255)) {
+                errorDiv.textContent = 'Invalid IP address';
+                return;
+            }
+            fetch('/add_rule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `ip=${ip}&action=${action}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    successDiv.textContent = `Rule added: ${data.ip} -> ${data.action}`;
+                    document.getElementById('new-ip').value = '';
+                    updateRulesTable();
+                    setTimeout(() => successDiv.textContent = '', 3000);
+                } else {
+                    errorDiv.textContent = data.message || 'Failed to add rule';
+                }
+            });
+        });
+
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-rule')) {
+                const ip = e.target.dataset.ip;
+                const errorDiv = document.getElementById('error-message');
+                const successDiv = document.getElementById('success-message');
+                errorDiv.textContent = '';
+                successDiv.textContent = '';
+                fetch(`/remove_rule/${ip}`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        successDiv.textContent = `Rule removed: ${ip}`;
+                        updateRulesTable();
+                        setTimeout(() => successDiv.textContent = '', 3000);
+                    } else {
+                        errorDiv.textContent = data.message || 'Failed to remove rule';
+                    }
+                });
+            } else if (e.target.closest('#packet-table tbody tr, #blocked-packet-table tbody tr')) {
+                const row = e.target.closest('tr');
+                const packet = JSON.parse(row.dataset.packet);
+                document.getElementById('detail-ip').textContent = packet.src_ip;
+                document.getElementById('detail-protocol').textContent = packet.protocol;
+                document.getElementById('detail-country').textContent = packet.country || 'Unknown';
+                document.getElementById('detail-timestamp').textContent = new Date(packet.timestamp * 1000).toLocaleString();
+                document.getElementById('detail-blocked').textContent = packet.blocked ? 'Yes' : 'No';
+                const modal = new bootstrap.Modal(document.getElementById('packet-details-modal'));
+                modal.show();
+            }
+        });
+
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        });
+
+        document.getElementById('scroll-toggle').addEventListener('click', function() {
+            autoScroll = !autoScroll;
+            this.textContent = autoScroll ? 'Pause Scroll' : 'Resume Scroll';
+        });
+
+        document.getElementById('filter-ip').addEventListener('input', function() {
+            filterIp = this.value;
+        });
+
+        document.getElementById('clear-filter').addEventListener('click', function() {
+            document.getElementById('filter-ip').value = '';
+            filterIp = '';
+        });
+
+        document.getElementById('protocol-filter').addEventListener('change', function() {
+            filterProtocol = this.value;
+            document.querySelector('#packet-table tbody').innerHTML = '';
+            document.querySelector('#blocked-packet-table tbody').innerHTML = '';
+        });
+
+        document.getElementById('export-packets').addEventListener('click', function() {
+            window.location.href = '/export_packets';
+        });
+
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+        }
+
+        updateRulesTable();
+    </script>
+</body>
+</html>

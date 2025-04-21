@@ -1,0 +1,126 @@
+body {
+    background-color: #f0f2f5;
+    font-family: 'Poppins', sans-serif;
+    transition: background-color 0.3s, color 0.3s;
+}
+body.dark-mode {
+    background-color: #121212;
+    color: #e0e0e0;
+}
+h1, h3, h4, h5 {
+    color: #1a1a1a;
+}
+body.dark-mode h1, body.dark-mode h3, body.dark-mode h4, body.dark-mode h5 {
+    color: #ffffff;
+}
+.sidebar {
+    width: 250px;
+    background-color: #ffffff;
+    min-height: 100vh;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    position: fixed;
+}
+body.dark-mode .sidebar {
+    background-color: #1e1e1e;
+}
+.main-content {
+    margin-left: 250px;
+    width: calc(100% - 250px);
+}
+.card {
+    border: none;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-radius: 10px;
+}
+body.dark-mode .card {
+    background-color: #1e1e1e;
+    box-shadow: 0 4px 8px rgba(255,255,255,0.1);
+}
+.table-striped tbody tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+body.dark-mode .table-striped tbody tr:nth-child(odd) {
+    background-color: #2a2a2a;
+}
+.table-striped tbody tr {
+    transition: background-color 0.3s;
+}
+.table-striped tbody tr:hover {
+    background-color: #e9ecef;
+    cursor: pointer;
+}
+body.dark-mode .table-striped tbody tr:hover {
+    background-color: #3a3a3a;
+}
+.table-danger {
+    background-color: #fee2e2 !important;
+}
+body.dark-mode .table-danger {
+    background-color: #b91c1c !important;
+}
+.btn-gradient {
+    background: linear-gradient(45deg, #007bff, #00d4ff);
+    color: white;
+    border: none;
+}
+.btn-gradient:hover {
+    background: linear-gradient(45deg, #0056b3, #0096cc);
+}
+.text-danger {
+    font-weight: 600;
+}
+.text-success {
+    font-weight: 600;
+}
+.sticky-header {
+    position: sticky;
+    top: 0;
+    background: #f8f9fa;
+    z-index: 1;
+}
+body.dark-mode .sticky-header {
+    background: #1e1e1e;
+}
+.packet-row {
+    animation: pulse 0.5s;
+}
+.flash {
+    animation: flash 1s;
+}
+.slide-in {
+    animation: slideIn 0.5s ease-out;
+}
+.status-badge {
+    background: #28a745;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 12px;
+    font-size: 0.9em;
+}
+@keyframes pulse {
+    0% { transform: scale(0.98); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+}
+@keyframes slideIn {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes flash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        min-height: auto;
+        position: relative;
+    }
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+.table th, .table td {
+    padding: 0.5rem;
+    font-size: 0.9rem;
+}

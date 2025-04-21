@@ -1,0 +1,19 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build firewall_userspace",
+            "type": "shell",
+            "command": "gcc -o firewall_userspace firewall_userspace.c -lbpf",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Build ebpf_firewall",
+            "type": "shell",
+            "command": "clang -target bpf -O2 -I. -g -c ebpf_firewall.c -o ebpf_firewall.o"
+        }
+    ]
+}

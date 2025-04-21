@@ -1,0 +1,16 @@
+<form id="blockForm">
+    <input type="text" id="ipInput" placeholder="Enter IP to block" required>
+    <button type="submit">Block IP</button>
+</form>
+<script>
+    document.getElementById('blockForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const ip = document.getElementById('ipInput').value;
+        fetch('/block_ip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `ip=${ip}`
+        }).then(response => response.json())
+          .then(data => alert(data.message));
+    });
+</script>
