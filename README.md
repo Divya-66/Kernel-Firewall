@@ -1,253 +1,251 @@
-# CareerBoost 🚀
+# eBPF Firewall Dashboard
 
-A comprehensive career development platform empowering users to plan, track, and achieve their professional goals with AI-driven insights, real-time mentorship, and a polished user experience.
+A real-time network firewall dashboard built with **eBPF**, **Flask**, and **SocketIO** to monitor network traffic, visualize packet details, and automatically block malicious IPs based on threat intelligence.
 
----
-
-## 📖 About CareerBoost
-
-CareerBoost is an all-in-one web application designed to streamline career advancement for students, early-career professionals, and career switchers. It integrates personalized job recommendations, skill development, professional branding, and community support into one unified experience.
-
-Built with **React**, **Supabase**, and **PostgreSQL**, it delivers a scalable, cloud-based solution with a sleek, modern interface.
+This project captures packets at the kernel level, enriches them with geolocation (via ipgeolocation.io) and threat scores (via AbuseIPDB), and displays them in a responsive web interface with live updates, filtering, and export capabilities.
 
 ---
 
-## ✨ Key Features
+## 🚀 Features
 
-| Feature                           | Description                                                     |
-| --------------------------------- | --------------------------------------------------------------- |
-| 🎯 Interactive Career Roadmap     | Dynamic visual timeline of goals, courses, and job applications |
-| 📊 Skill Mastery Dashboard        | Animated radial bars to track skill proficiency                 |
-| 🤖 AI-Powered Job Recommendations | Tailored listings based on skills and goals                     |
-| 📚 Learning Paths                 | Curated course collections aligned with your career plan        |
-| 📄 Resume & Portfolio Builder     | PDF resume generator and shareable project portfolio            |
-| ✅ Task & Goal Tracking            | Set milestones, divide into tasks, track progress visually      |
-| 🎤 Mock Interview Simulator       | AI-generated feedback on interview answers                      |
-| 💬 Real-Time Mentorship Chat      | Live chat with mentors and peers                                |
-| 🧠 Community Forum                | Ask questions, share insights, build your network               |
-| 📈 Analytics & Contests           | Track growth and compete in skill challenges                    |
+| Feature             | Description                                                             |
+| ------------------- | ----------------------------------------------------------------------- |
+| Packet Capture      | Uses eBPF to capture IPv4 packets at the kernel level with low overhead |
+| Geolocation         | Tags source IPs with country names using ipgeolocation.io               |
+| Threat Intelligence | Scores IPs using AbuseIPDB, auto-blocks IPs with score > 50             |
+| Real-Time Dashboard | Displays packets and stats live via SocketIO                            |
+| Interactive UI      | Filter by IP/protocol/threat score; dark mode; export CSV               |
+| Firewall Rules      | Add/remove block/allow rules, applied via eBPF                          |
+| Animations & Alerts | Blocked packets highlighted with effects; toast alerts                  |
 
 ---
 
-## 🌟 Problem Statement
+## 📁 Project Structure
 
-Today’s job market is filled with fragmented tools—job boards, MOOCs, resume builders, etc.—which can leave users overwhelmed and isolated. CareerBoost addresses these challenges by:
-
-* Guiding users with a clear career roadmap
-* Bridging skill gaps with smart recommendations
-* Enhancing employability with professional outputs
-* Fostering support through mentorship and forums
-* Motivating action via analytics and gamification
-
----
-
-## 🛠️ Tech Stack
-
-| Category           | Technology                                                    |
-| ------------------ | ------------------------------------------------------------- |
-| **Frontend**       | React, Tailwind CSS, React Spring, React Circular Progressbar |
-| **Backend**        | Supabase (PostgreSQL, PostgREST, Supavisor)                   |
-| **Database**       | PostgreSQL (RLS, JSONB, Triggers)                             |
-| **Real-Time**      | Supabase WebSockets, Socket.IO (for Mentorship Chat)          |
-| **File Storage**   | Supabase Storage (S3-compatible)                              |
-| **Authentication** | Supabase Auth (JWT, Email, OAuth)                             |
-| **PDF Generation** | jsPDF (Resumes, Portfolios)                                   |
-| **Deployment**     | Vercel (Frontend), Supabase Cloud (Backend)                   |
+```
+firewall-project/
+├── ebpf_handler.py        # eBPF packet capture and rule enforcement
+├── app.py                # Flask backend with geolocation, threat scoring, and SocketIO
+├── templates/
+│   └── index.html        # Frontend dashboard with Bootstrap, Chart.js
+├── static/
+│   └── style.css         # Custom styles for dark mode, animations
+├── data/
+│   ├── packets.json      # Logs captured packets
+│   └── rules.json        # Stores firewall rules
+├── venv/                 # Python virtual environment
+└── README.md             # Project documentation
+```
 
 ---
 
-## 🖼️ Screenshots
+## ✅ Prerequisites
 
-| Dashboard                               | Skill Mastery                                   | Portfolio                               | Mentorship Chat                                     |
-| --------------------------------------- | ----------------------------------------------- | --------------------------------------- | --------------------------------------------------- |
-| ![Dashboard](screenshots/dashboard.png) | ![Skill Mastery](screenshots/skill-mastery.png) | ![Portfolio](screenshots/portfolio.png) | ![Mentorship Chat](screenshots/mentorship-chat.png) |
+* OS: Ubuntu 20.04 (tested on WSL2)
+* Network Interface: Active interface (e.g., eth0)
+* API Keys:
 
----
-
-## 🚀 Getting Started
-
-### ✅ Prerequisites
-
-* Node.js v16 or higher
-* Supabase account
-* GitHub account
+  * [ipgeolocation.io](https://ipgeolocation.io)
+  * [AbuseIPDB](https://abuseipdb.com)
+* Root Access: Required for eBPF
 
 ---
 
-### 🧰 Installation
+## 🧰 Installation
+
+### Clone the Repository:
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/careerboost.git
-cd careerboost
-
-# Install dependencies
-npm install
+git clone https://github.com/your-username/firewall-project.git
+cd firewall-project
 ```
 
----
-
-### 🔑 Environment Setup
-
-1. Create a project in [Supabase](https://supabase.com)
-2. Go to **Project Settings > API** and copy:
-
-   * Project URL
-   * Anon Key
-3. Create a `.env` file in root:
-
-```env
-REACT_APP_SUPABASE_URL=your-supabase-url
-REACT_APP_SUPABASE_ANON_KEY=your-anon-key
-```
-
----
-
-### 🧱 Database Setup
-
-```sql
-CREATE TABLE profiles (
-  id UUID PRIMARY KEY,
-  email TEXT,
-  skills TEXT[] DEFAULT '{}',
-  skill_mastery JSONB DEFAULT '[]'
-);
-
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-```
-
-> More SQL available in `database/setup.sql`
-
----
-
-### ▶️ Start the App
+### Install System Dependencies:
 
 ```bash
-npm start
+sudo apt update
+sudo apt install -y python3 python3-pip python3-venv libbpf-dev clang llvm
 ```
 
-Open in browser: [http://localhost:3000](http://localhost:3000)
-
----
-
-### 💬 (Optional) Real-Time Chat Server (Mock)
+### Set Up Python Environment:
 
 ```bash
-npm install -g json-server
-json-server --watch db.json --port 3001
+python3 -m venv venv
+source venv/bin/activate
+pip install flask flask-socketio netifaces requests bcc
 ```
 
----
+### Configure API Keys:
 
-## 📂 Project Structure
+Edit `app.py`:
+
+```python
+GEO_API_KEY = "your_ipgeolocation_api_key"
+ABUSEIPDB_KEY = "your_abuseipdb_api_key"
+```
+
+### Set Network Interface:
 
 ```bash
-careerboost/
-├── public/
-│   └── index.html
-├── src/
-│   ├── components/
-│   │   ├── Dashboard.js
-│   │   ├── SkillMastery.js
-│   │   ├── Portfolio.js
-│   │   └── People.js
-│   ├── styles/
-│   │   ├── styles.css
-│   │   ├── SkillMastery.css
-│   │   └── Portfolio.css
-│   ├── supabaseClient.js
-│   └── App.js
-├── database/
-│   └── setup.sql
-├── .env
-├── package.json
-└── README.md
+ip link
+```
+
+Update `INTERFACE` in `ebpf_handler.py`:
+
+```python
+INTERFACE = "your_interface_name"
 ```
 
 ---
 
-## 🔧 Usage Guide
+## ▶️ Usage
 
-| Action               | Description                                 |
-| -------------------- | ------------------------------------------- |
-| **Sign Up/Login**    | Register with email or OAuth                |
-| **Set Career Goals** | Define goals like “Become a Web Developer”  |
-| **Track Skills**     | Monitor skill growth via dashboard          |
-| **Find Jobs**        | View AI-driven job recommendations          |
-| **Build Resume**     | Export polished resumes using jsPDF         |
-| **Add Projects**     | Upload and showcase projects in a portfolio |
-| **Mock Interviews**  | Practice interviews with AI feedback        |
-| **Mentorship**       | Chat live with mentors                      |
-| **Community**        | Ask and answer in the forum                 |
-| **Analytics**        | View visual feedback on progress            |
+### Run eBPF Packet Capture:
+
+```bash
+sudo python3 ebpf_handler.py
+```
+
+### Run Flask Backend:
+
+```bash
+source venv/bin/activate
+python3 app.py
+```
+
+Access at: `http://<your-ip>:5000`
+
+### Access Dashboard
+
+Open in browser: `http://<your-ip>:5000`
+
+### Generate Traffic
+
+```bash
+ping 8.8.8.8
+curl http://example.com
+```
+
+### Stop the Project
+
+Press `Ctrl+C` in both terminals. XDP hook is removed automatically.
 
 ---
 
-## 🏆 Hackathon Highlights
+## 📊 Dashboard Features
 
-| Highlight      | Description                                           |
-| -------------- | ----------------------------------------------------- |
-| 💡 Innovation  | AI + mentorship + community + roadmap in one platform |
-| 🌍 Impact      | Helps users overcome real career obstacles            |
-| ✨ UI Polish    | Modern fonts, React Spring animations, responsive     |
-| ⚙️ Scalability | Serverless backend with Supabase and WebSockets       |
+| Feature               | Description                                                    |
+| --------------------- | -------------------------------------------------------------- |
+| Recent Packets Table  | Shows last 10 packets with IP, Protocol, Country, Threat Score |
+| Blocked Packets Table | Lists blocked IPs with red highlight                           |
+| Stats Cards           | Total packets, blocked packets, top IPs                        |
+| Packet Rate Graph     | Packets/sec over 60 seconds                                    |
+| Firewall Rules        | Add/remove rules dynamically                                   |
+| Filters & Export      | Filter by IP/protocol/threat score; Export CSV                 |
+| Toasts & Alerts       | Real-time alerts for blocks and rate limits                    |
 
 ---
 
-## 🔮 Future Enhancements
+## ⚙️ How It Works
 
-* 🔍 AI job matching with embeddings & pgvector
-* 📱 Mobile app with React Native
-* 🏅 Gamification (badges, leaderboard)
-* 📊 Advanced analytics & trends dashboard
-* 🏢 Enterprise-level team support features
+### eBPF Packet Capture (`ebpf_handler.py`):
+
+* Uses BCC to attach XDP
+* Captures packets and checks rules
+* Logs to `packets.json`
+
+### Flask Backend (`app.py`):
+
+* Reads packets and adds metadata (country, threat)
+* Sends updates via SocketIO
+* Auto-blocks malicious IPs (>50 threat score)
+
+### Web Frontend:
+
+* Built with Bootstrap, Chart.js, and SocketIO
+* Displays and animates packet data
+
+---
+
+## 🧪 Example Output
+
+### Ping 8.8.8.8:
+
+```json
+{"src_ip": "8.8.8.8", "protocol": 1, "timestamp": 1744642985.71, "blocked": false}
+```
+
+### Malicious IP 14.24.17.104:
+
+```bash
+Threat check: score 75 → auto-blocked
+```
+
+```json
+{"ip": "14.24.17.104", "action": "block"}
+```
+
+Toast: "Auto-blocked malicious IP: 14.24.17.104"
+
+---
+
+## 🛠️ Troubleshooting
+
+| Issue                 | Fix                                                   |
+| --------------------- | ----------------------------------------------------- |
+| No packets captured   | Check interface, run with `sudo`, generate traffic    |
+| API Errors            | Check API keys, verify internet connection and quota  |
+| Dashboard Not Loading | Check Flask logs, use correct IP and port             |
+| Too Many IPs          | Filter by score > 25 or update emit logic in `app.py` |
+
+---
+
+## 🔮 Future Improvements
+
+* 🌍 World map of packet origins
+* 🌐 IPv6 support
+* 📈 Rate-based blocking
+* 🏁 Country flag icons
+* 🗃️ Store history in DB
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions!
+1. Fork the repo
+2. Create a branch:
 
-```bash
-# Fork the repo
-# Create a feature branch
-git checkout -b feature/YourFeature
+   ```bash
+   git checkout -b feature/new-feature
+   ```
+3. Commit:
 
-# Commit changes
-git commit -m "Add YourFeature"
+   ```bash
+   git commit -m "Add new feature"
+   ```
+4. Push:
 
-# Push branch
-git push origin feature/YourFeature
-
-# Open a Pull Request 🎉
-```
-
-Please follow our Code of Conduct and open issues via GitHub Issues.
+   ```bash
+   git push origin feature/new-feature
+   ```
+5. Open a Pull Request
 
 ---
 
 ## 📜 License
 
-Licensed under the [MIT License](LICENSE)
+This project is licensed under the [Apache License 2.0](LICENSE).
 
 ---
 
-## 🙌 Acknowledgements
+## 🙌 Acknowledgments
 
-* [Supabase](https://supabase.com)
-* [React](https://reactjs.org)
-* [React Spring](https://react-spring.dev/)
-* \[Hackathon Organizers] for inspiration
+* [BCC](https://github.com/iovisor/bcc)
+* [ipgeolocation.io](https://ipgeolocation.io)
+* [AbuseIPDB](https://abuseipdb.com)
+* Flask + SocketIO
+* Bootstrap + Chart.js
 
----
+> Built as a learning project to explore **eBPF**, **network security**, and **real-time dashboards**.
 
-## 📬 Contact
-
-**Author:** Your Name
-**GitHub:** [@yourusername](https://github.com/yourusername)
-**Email:** [your.email@example.com](mailto:your.email@example.com)
-**LinkedIn:** [linkedin.com/in/yourprofile](https://linkedin.com/in/yourprofile)
-
----
-
-> **CareerBoost:** Your Career, Your Plan, Your Success! 🌟
+⭐ Feel free to star the repo or open issues for feedback!
